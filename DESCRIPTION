@@ -5,7 +5,7 @@ Authors@R:
     person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: 
-# Complete Time Series Analysis Techniques Cheat Sheet
+"# Complete Time Series Analysis Techniques Cheat Sheet
 
 ## 1. Smoothing with a Finite Moving Average Filter
 
@@ -185,7 +185,7 @@ Key points for all tests:
 - Combine multiple tests and visual inspections for comprehensive diagnostics.
 
 Remember: This cheat sheet provides a quick reference. Always refer to detailed documentation and consider the specific context of your time series analysis when applying these techniques.
-
+"
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
