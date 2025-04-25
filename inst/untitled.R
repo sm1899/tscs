@@ -1,206 +1,374 @@
-setwd("/Users/Local Drive/Teaching/2025/SMRA/R-CODES")
-adv=read.csv("Advertising.CSV", header=T,stringsAsFactors=T)
-adv
-summary(adv)
-%%%%%%%%%%%%%%%%%%  Matrix Scatter Plot  %%%%%%%%%%%%%%%%%%%%%
-pairs(~Sales+TV+Radio+Newspaper,adv)
-%%%%%%%%%%%%%%%%%%%  Model-1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-lim1.fit=lm(Sales~TV, data=adv)
-summary(lim1.fit)
-confint(lim1.fit, level=0.97)
-%%%%%%%%%%%%%%%%%%  Model-II  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-lim2.fit=lm(Sales~TV+Radio, data=adv)
-summary(lim2.fit)
-confint(lim2.fit, level=0.98)
-%%%%%%%%%%%%%%%%%%%%  Model-III  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-lim3.fit=lm(Sales~TV+Radio+Newspaper, data=adv)
-summary(lim3.fit)
-confint(lim3.fit, level=0.96)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Estimate of the mean response Model-II %%%%%%%%%%%%%%%%%
-  predict(object = lim2.fit, newdata = data.frame(TV =100, Radio=20), 
-          interval = "confidence", level=.95)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Prediction of new observation for Model-II %%%%%%%%%%%%%%%%%
-  predict(object = lim2.fit, newdata = data.frame(TV =100, Radio=20), 
-          interval = "prediction", level=.95)
-##  Model Adequacy Checking ####PRESS ############################################
-x=model.matrix(lim2.fit)
-PRESS_res=summary(lim2.fit)$res/(1-hat(x))
-print(PRESS_res)
-##############  Plotting of PRESS Residuals #########################
-par(mfrow=c(1,1))
-plot(PRESS_res,ylab="PRESS residual")
-################  R^2 Prediction #######################
-PRESS=sum(PRESS_res^2)
-TSS= sum(anova(lim2.fit)$"Sum Sq")
-pred.r.squared = 1 - PRESS/(TSS)
-pred.r.squared
-  %%%%%%%%%%%%%%%%%%%  Model diagonostic Cheking: Outlier Detection  %%%%%%%%%%%%%%%%%%%
-rstandard(lim2.fit)
-rstudent(lim2.fit)   ## Studeentized residual
-par(mfrow=c(2,2))  ##one plot in a given page
-plot(rstandard(lim2.fit),ylab="Standarized residual")
-plot(rstudent(lim2.fit),ylab="Studentized residual")
-########################### Leverage Points ##########
-h=hatvalues(lim2.fit)
-h
-k=2
-n=200
-t=2*k/n
-for (i in 1:200)
-if(h[i]>t)
-{print(h[i])}
-######################  Cook's distance ##############
-cook=cooks.distance(lim2.fit)
-cook
-plot(cook,type="b",pch=18,col="red")
-n=200
-k=2
-cutoff = 4/(n-k-1)
-cutoff
-abline(h=cutoff,lty=2)
-for (i in 1:200)
-  if(cook[i]>cutoff)
-  {print(cook[i])}  
-###################   DFBETAS    ################
-def=dfbetas(lim2.fit)
-def
-###################   DFFITS    ################
-dff=dffits(lim2.fit)
-abs(dff)
-plot(abs(dff),type="b",pch=18,col="red")
-n=200
-k=2
-cutoff = 2*sqrt(k/n)
-cutoff
-abline(h=cutoff,lty=2)
-for (i in 1:200)
-  if(abs(dff)[i]>cutoff)
-  {print(abs(dff)[i])} 
-######################   Covratio  ###############
-cv=covratio(lim2.fit)
-cv
-n=200
-k=2
-for (i in 1:n)
-  if(cv[i]>1+3*k/n|cv[i]<1-3*k/n)
-  {print(cv[i])}
-#####################Durbin-watson test ##############
-library(DescTools)
-DurbinWatsonTest(lim2.fit, alternative ="less")
-DurbinWatsonTest(lim2.fit, alternative ="greater")
-DurbinWatsonTest(lim2.fit, alternative ="two.sided")
-################  Heteroscedasticity (Non-Constant Variance) #############
-par(mfrow=c(2,2))
-plot(lim2.fit$fit,lim2.fit$res,xlab="fitted", ylab="Residual")
-abline(h=0)
-##%%%%%%%%%%%%%%%%%  Normality Checking %%%%%%%%%%%%%%%%%%%%%%%%
-##################  Q-Q Plot  ###########
-dev.off()  ###### This clears all existing plots from the Rstudio.
-par(mar=c(2,2,2,0))
-qqnorm(rstudent(lim2.fit))
-qqline(rstudent(lim2.fit), col='red')## Q-Q Plot
-########p-p Plot %%%%%%%%%%%%%
-library(faraway)
-par(mar=c(2,2,2,0))
-probDist <- pnorm(rstudent(lim2.fit))
-plot(ppoints(length(rstudent(lim2.fit))), sort(probDist),
-     main = "PP Plot_studentized", xlab = "Observed Probability", 
-     ylab = "Expected Probability") 
-abline(0,1)#add diagonal line
-############ BOX-COX transformation ########
-# library(MASS)
-# #find optimal lambda for Box-Cox transformation 
-# par(mar=c(1,1,1,1))##Fix the margin
-# bc <- boxcox(lim2.fit, data=adv,  lambda=seq(-.2, 0.5, length = 10))
-# ##names(bc)
-# lambda <- bc$x[which.max(bc$y)]
-# lambda
-# #fit new linear regression model using the Box-Cox transformation
-# new_model <- lm(((Sales^lambda-1)/lambda) ~ TV+Radio, data=adv)
-# summary(new_model)
-#################################################################################
-##################   BOX-COX Transformation #####################################
-#################################################################################
-library(car)
-###################  bcPower transformation for positive response  ###############
-max(adv$Sales)/min(adv$Sales)
-p1=powerTransform(Sales~TV+Radio+Newspaper, family="bcPower",data=adv)
-summary(p1)
-#coef(p1, round=TRUE)
-newmodel= lm(bcPower(Sales, p1$roundlam, jacobian.adjusted = TRUE) ~ TV+Radio+Newspaper,
-             data=adv)
-summary(newmodel)
-########################  bcnPower transformation for negative responses #########
-credit=read.csv("Credit-2.CSV", header=T,stringsAsFactors=T)
-credit ###The credit data
-mod_cr=lm(Balance~Income+Limit, data=credit)
-summary(mod_cr)###Simple linear model
-p2=powerTransform(Balance~Income+Limit, family="bcnPower",data=credit)
-summary(p2)##Box-cox transformation summary
-#coef(p2, round=TRUE)
-newmodel2= lm(bcnPower(Balance, p2$roundlam, jacobian.adjusted = TRUE, gamma=413.97) 
-              ~ Income+Limit,data=credit)
-summary(newmodel2)
-######################## Yeo-Jhonson Power TRansformation for negative response  #####
-p3=powerTransform(Balance~Income+Limit, family="yjPower",data=credit)
-summary(p3)
-#coef(p3, round=TRUE)
-newmodel3= lm(yjPower(Balance, p3$roundlam) ~ Income+Limit, data=credit)
-summary(newmodel3)
-#####################################################################################
-################# Partial regression and Partial residual plots #####################
-#####################################################################################
-library(car)
-model=lm(Sales~TV+Radio+Newspaper,data=adv)
-avPlots(model)##Partial regression plot
-###########################################
-library(faraway)
-model=lm(Sales~TV+Radio+Newspaper,data=adv)
-par(mfrow=c(2,2))
-prplot(model, 1)
-prplot(model, 2)
-prplot(model, 3)
-######################  Multicolinearity ############
-View(adv)
-X<-adv[,2:4]
-library(GGally)
-ggpairs(X) ##Plotting of correlation matrix 
-#library(corpcor)
-#cor2pcor(cov(X))##Correlation matrix
-#############
-library(mctest)
-omcdiag(model)
-imcdiag(model, method="VIF", corr="T")
-######### Pattern of the multicollinearity
-library(ppcor)
-pcor(X, method = "pearson")
-
-
-################################
-library(ISLR)
-library(MASS)
-data(Credit)
+#sheet2
+setwd("/Users/Local Drive/Teaching/2022/SMRA/R-CODES")
+library(ISLR2)
 View(Credit)
-write.csv("Credit")
-write.csv(Credit, file = "Credit.csv")
-#############################
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  Subset selection  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  library(MASS)
-step.model <- stepAIC(lim3.fit, direction = "both", 
-                      trace = FALSE)  %%
-  summary(step.model)
-%%%%%%%%%%%%%%%%%%%%
-  stepf.model <- stepAIC(lim3.fit, direction = "forward", trace = FALSE)
-summary(stepf.model)
-stepb.model <- stepAIC(lim3.fit, direction = "backward", trace = FALSE)
-summary(stepb.model)
-%%%%
-  adv=read.csv("Advertising.CSV", header=T,stringsAsFactors=T)
-  adv
-  summary(adv)
-  #fit linear regression model
-  model <- lm(Sales~TV+Radio+Newspaper, data=adv)
-  summary(model)
-  par(mfrow=c(2,2))
-  plot(model)
-  max(adv$Sales)/min(adv$Sales)
+str(Credit)
+
+names(Credit)
+dim(Credit)
+sum(is.na(Credit))
+Credit=na.omit(Credit)
+
+#best subset selection 
+
+library(leaps)
+best.model=regsubsets(Balance~.,Credit, nvmax=11)
+reg.summary=summary(best.model)
+reg.summary
+coef(best.model,1)
+coef(best.model,2)
+coef(best.model,3)
+coef(best.model,4)
+coef(best.model,6)
+names(reg.summary)
+reg.summary$adjr2
+plot(reg.summary$adjr2 , xlab = "Number of Variables",
+     ylab = "Adjusted RSq",type="l")
+which.max(reg.summary$adjr2)
+coef(best.model,7)
+points (7, reg.summary$adjr2[7] , col = "red", cex = 2,
+        pch = 20)
+#######################################
+ par(mfrow = c(2, 2))
+plot(reg.summary$rss , xlab = "Number of Variables",
+       ylab = "RSS", type = "l")
+plot(reg.summary$adjr2 , xlab = "Number of Variables",
+       ylab = "Adjusted RSq",type="l")
+ which.max(reg.summary$adjr2)
+points (11, reg.summary$adjr2 [11] , col = "red", cex = 2,
+          pch = 20)
+####
+reg.summary$bic
+which.min(reg.summary$bic)
+coef(best.model,4)
+plot(reg.summary$bic , xlab = "Number of Variables",
+     ylab = "BIC",type="l")
+points (4, reg.summary$adjr2[4] , col = "red", cex = 2,
+        pch = 20)
+# Forward Selection 
+regfit.fwd <- regsubsets(Balance~., data = Credit ,
+                         nvmax = 11, method = "forward")
+fwd.summary=summary(regfit.fwd)
+fwd.summary
+coef(regfit.fwd,1)
+coef(regfit.fwd,2)
+coef(regfit.fwd,3)
+coef(regfit.fwd,4)
+coef(regfit.fwd,5)
+coef(regfit.fwd,6)
+coef(regfit.fwd,7)
+fwd.summary$adjr2
+plot(fwd.summary$adjr2 , xlab = "Number of Variables",
+     ylab = "Adjusted RSq")
+which.max(fwd.summary$adjr2)
+points (7, fwd.summary$adjr2 [7] , col = "red", cex = 2,
+        pch = 20)
+######
+plot(reg.summary$cp, xlab = "Number of Variables",
+         ylab = "Cp", type = "l")
+ which.min(reg.summary$cp)
+points (10, reg.summary$cp[10] , col = "red", cex = 2,
+          pch = 20)
+
+#Backward Selection 
+
+regfit.bwd <- regsubsets(Balance~., data = Credit ,
+                         nvmax = 11, method = "backward")
+bwd.summary=summary(regfit.bwd)
+bwd.summary
+coef(regfit.bwd,11)
+coef(regfit.bwd,10)
+coef(regfit.bwd,9)
+coef(regfit.bwd,8)
+coef(regfit.bwd,7)
+coef(regfit.bwd,6)
+bwd.summary$adjr2
+plot(bwd.summary$adjr2 , xlab = "Number of Variables",
+     ylab = "Adjusted RSq",type="l")
+which.max(bwd.summary$adjr2)
+points (6, bwd.summary$adjr2 [6] , col = "red", cex = 2,
+        pch = 20)
+
+#Sequential stepwise  Selection
+
+regfit.seq <- regsubsets(Balance~., data = Credit ,
+                         nvmax = 11, method = "seqrep")
+seq.summary=summary(regfit.seq)
+seq.summary
+coef(regfit.seq,1)
+coef(regfit.seq,2)
+coef(regfit.seq,3)
+coef(regfit.seq,4)
+coef(regfit.seq,5)
+coef(regfit.seq,7)
+seq.summary$adjr2
+plot(seq.summary$adjr2 , xlab = "Number of Variables",
+     ylab = "Adjusted RSq",type="l")
+which.max(seq.summary$adjr2)
+points (7, seq.summary$adjr2 [7] , col = "red", cex = 2,
+        pch = 20)
+##########
+plot(reg.summary$cp, xlab = "Number of Variables",
+     ylab = "Cp", type = "l")
+which.min(reg.summary$cp)
+points (6, reg.summary$cp[6] , col = "red", cex = 2,
+        pch = 20)
+#########
+plot(reg.summary$bic , xlab = "Number of Variables",
+     ylab = "BIC", type = "l")
+which.min(reg.summary$bic)
+points (4, reg.summary$bic [4], col = "red", cex = 2,
+        pch = 20)
+
+#Validation set and cross-validation set approach
+set.seed(1)
+train=sample(c(TRUE,FALSE), nrow(Credit),rep=T)
+train
+test=(!train)
+train.mat=model.matrix(Balance~., data=Credit[train, ])
+train.mat
+test.mat=model.matrix(Balance~., data=Credit[test, ])
+test.mat
+##best subset for train data
+library(leaps)
+regfit.best=regsubsets(Balance~.,data=Credit[train, ],nvmax=11, method="forward")
+# Compute the test MSE using validation set approach 
+test.mse=rep(NA, 11)
+for (i in 1:11){
+  coefi=coef(regfit.best, id=i)
+  pred=test.mat[ ,names(coefi)]%*%coefi
+  test.mse[i]=mean((Credit$Balance[test]-pred)^2)
+}
+test.mse
+which.min(test.mse)
+coef(regfit.best,7)##best model according to validation set
+par(mfrow=c(1,1))
+plot(test.mse)
+#########  Creating the predict function ###########
+predict.regsubsets=function(object,newdata,id){ 
+##extract the same structure as the object has
+form=as.formula(object$call[[2]])
+#do the same analysis as like object, with the new data
+mat=model.matrix(form,newdata)
+coefi=coef(object,id=id)
+xvars=names(coefi)
+mat[,xvars]%*%coefi
+}
+
+sm=summary(best.fit)
+sm$obj$call[[3]]
+#Compute the test MSE using cross-validation set approach 
+k=10
+n=nrow(Credit)
+set.seed(1)
+folds=sample(rep(1:k, length=n))
+folds
+cv.errors=matrix(NA,k, 11, dimnames = list(NULL,paste(1:11)))
+cv.errors
+#######
+for(j in 1:k){ 
+  best.fit=regsubsets(Balance~.,
+                      data=Credit[folds!=j,],
+                      nvmax=11)
+for(i in 1:11){ 
+pred=predict(best.fit,Credit[folds==j,],id=i) 
+cv.errors[j,i]=mean( (Credit$Balance[folds==j]-pred)^2)
+              }
+}
+##############
+mean.cv.errors=apply(cv.errors,2,mean)
+mean.cv.errors
+which.min(mean.cv.errors)
+par(mfrow=c(1,1))
+plot(mean.cv.errors,type="b")
+reg.best=regsubsets(Balance~.,data=Credit, nvmax=11)
+coef(reg.best,6)
+
+#Ridge Regression 
+
+grid=10^seq(10,-2,length=100)# Create a grid of lambda values
+grid## See the all lambda values
+library(glmnet)
+View(Credit)
+x=model.matrix(Balance~.,Credit)[,-1]#Extract the X matrix
+y=Credit$Balance#Extract the response vector
+ridge.mod=glmnet(x,y,alpha=0,lambda=grid)# Ridge regression for all grid values
+ridge.mod$lambda[45] # Lambda value corresponding to 45-th grid value
+coef(ridge.mod)[, 45] # Coefficient values corresponding to 45th Lambda value
+#dim(coef(ridge.mod))# dimension of the coefficient matrix
+coef(ridge.mod)[, 34] # Coefficient values corresponding to 34-th grid value
+
+# Estimation of the TEST MSE using Validation set
+
+x=model.matrix(Balance~.,Credit)[,-1]#Extract the X matrix
+y=Credit$Balance#Extract the response vector
+grid=10^seq(10,-4,length.out=99)
+grid=c(grid,0)
+grid
+set.seed(18)
+train=sample(1:nrow(x), nrow(x)*(2/3)) 
+train.mat=model.matrix(Balance~., data=Credit[train, ])## Train data without response
+test=(-train)
+test.mat=model.matrix(Balance~., data=Credit[test, ])## Test data without response
+test.mat
+y.test=y[test]##Test responses
+##Fit the regression model, for all lambda, for the train data
+ridge.mod=glmnet(x[train,],y[train],alpha=0,lambda=grid, thresh=1e-12)
+plot(ridge.mod,xvar="lambda")
+##### TEST MSE for lambda[1]##########
+ridge.pred1=predict(ridge.mod,s=ridge.mod$lambda[1] ,newx=x[test,])
+mean((ridge.pred1-y.test)^2)#Test MSE for lambda[1]
+predict(ridge.mod,s=ridge.mod$lambda[1] ,type="coefficients")[1:12,]
+#####  Test MSE for lambda[25]  #########
+ridge.pred2=predict(ridge.mod,s=ridge.mod$lambda[25] ,newx=x[test,]) 
+mean((ridge.pred2-y.test)^2)
+predict(ridge.mod,s=ridge.mod$lambda[25] ,type="coefficients")[1:12,]##The model
+########## Test MSE for lambda[100]=0
+ridge.pred3=predict(ridge.mod,s=ridge.mod$lambda[100],newx=x[test,], exact=T) 
+mean((ridge.pred3-y.test)^2)
+predict(ridge.mod,s=ridge.mod$lambda[100],type="coefficients")[1:12,]
+
+#Choosing best lambda using 5-folds cross validation Method 
+#based on train data 
+
+##Note: lambda=0 case is not included in  cv.glmnet function. See the code of
+##cv.glmnet
+set.seed(16)
+x=model.matrix(Balance~.,Credit)[,-1]#Extract the X matrix
+y=Credit$Balance#Extract the response vector
+train=sample(1:nrow(x), nrow(x)*(2/3)) 
+train.mat=model.matrix(Balance~., data=Credit[train, ])## Train data without response
+test=(-train)
+test.mat=model.matrix(Balance~., data=Credit[test, ])## Test data without response
+y.test=y[test]##Test responses
+##cv.glmnet has some dafault lambda values; 
+#we may also set our own lambda values through grid
+library(glmnet)
+cv.out=cv.glmnet(x[train,],y[train],alpha=0, nfolds=5)
+plot(cv.out)
+#Choosing best Lambda 
+ best.lambda=cv.out$lambda.min
+best.lambda
+# TEST MSE corresponding to best lambda
+ridge.mod=glmnet(x[train,],y[train],alpha=0,lambda=best.lambda, thresh=1e-12)
+ridge.pred4=predict(ridge.mod,s=best.lambda,newx=x[test,]) 
+mean((ridge.pred4-y.test)^2)
+########### Refit the model using the full data by using the lambda chosen
+#by cross-validation technique
+Final_ridge=glmnet(x,y,alpha=0)
+predict(Final_ridge,type="coefficients",s=best.lambda)[1:12,]
+
+#THE LASSO
+
+library(glmnet)
+View(Credit)
+x=model.matrix(Balance~.,Credit)[,-1]#Extract the X matrix
+x
+y=Credit$Balance#Extract the response vector
+grid=10^seq(10,-2,length=100)# Create a grid of lambda values
+grid## See the all lambda values
+lasso.mod=glmnet(x,y,alpha=1,lambda=grid, thresh=1e-12)
+lasso.mod$lambda[1] # Lambda value corresponding to 45-th grid value
+dim(coef(lasso.mod))# dimension of the coefficient matrix
+coef(lasso.mod)[, 45] # Coefficient values corresponding to 45th Lambda value
+coef(lasso.mod)[, 100] # Coefficient values corresponding to 2nd lambda value
+
+#####  Estimation of the TEST MSE using Validation set
+
+set.seed(19)
+train=sample(1:nrow(x), nrow(x)*(2/3)) 
+train.mat=model.matrix(Balance~., data=Credit[train, ])## Train data without response
+test=(-train)
+test.mat=model.matrix(Balance~., data=Credit[test, ])## Test data without response
+y.test=y[test]##Test responses
+##Fit the regression model, for all lambda, for the train data
+lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid, thresh=1e-12)
+plot(lasso.mod)
+##### TEST MSE for lambda[1]##########
+lasso.pred1=predict(lasso.mod,s=lasso.mod$lambda[1] ,newx=x[test,])
+mean((lasso.pred1-y.test)^2)#Test MSE for lambda[1]
+predict(lasso.mod,s=lasso.mod$lambda[1] ,type="coefficients")[1:12,]
+#####  Test MSE for lambda[78]  #########
+lasso.pred2=predict(lasso.mod,s=lasso.mod$lambda[78] ,newx=x[test,]) 
+mean((lasso.pred2-y.test)^2)
+predict(lasso.mod,s=lasso.mod$lambda[78] ,type="coefficients")[1:12,]##The model
+
+#Choosing best lambda using 5-folds cross validation Method on Train data
+
+#Analaysis based on Train Data
+set.seed(11)
+x=model.matrix(Balance~.,Credit)[,-1]
+y=Credit$Balance
+train=sample(1:nrow(x), nrow(x)*(2/3)) 
+train.mat=model.matrix(Balance~., data=Credit[train, ])## Train data without response
+test=(-train)
+test.mat=model.matrix(Balance~., data=Credit[test, ])## Test data without response
+y.test=y[test]##Test responses
+##cv.glmnet has some dafault lambda values; 
+#we may also set our own lambda values through grid
+library(glmnet)
+cv.out=cv.glmnet(x[train,],y[train],alpha=1, nfolds=5)
+plot(cv.out)
+#######  Chossing best Lambda  ###########
+best.lambda=cv.out$lambda.min
+best.lambda
+##############  TEST MSE corresponding to best lambda
+Lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=best.lambda, thresh=1e-12)
+Lasso.pred4=predict(Lasso.mod,newx=x[test,]) 
+mean((Lasso.pred4-y.test)^2)
+########### Refit the model using the full data by using the lambda chosen
+#by cross-validation technique
+Full.mod=glmnet(x,y,alpha=1, lambda=best.lambda)
+coef(Full.mod)
+
+#Choosing best lambda using Cross validation on full data
+set.seed(18)
+x=model.matrix(Balance~.,Credit)[,-1]
+y=Credit$Balance
+grid=10^seq(10,-2,length=100)
+grid
+cv.full=cv.glmnet(x,y,alpha=1, lambda=grid, nfolds=10)
+plot(cv.full)
+best.lambda2=cv.full$lambda.min
+best.lambda2
+lasso.full=glmnet(x,y,alpha=1, lambda=best.lambda2)
+coef(lasso.full)
+
+# Fitting Elastic NET on a train data 
+# and finding test mse on the test data 
+
+set.seed(12)
+x=model.matrix(Balance~.,Credit)[,-1]
+y=Credit$Balance
+train=sample(1:nrow(x), nrow(x)*(2/3)) 
+train.mat=model.matrix(Balance~., data=Credit[train, ])## Train data without response
+test=(-train)
+test.mat=model.matrix(Balance~., data=Credit[test, ])## Test data without response
+y.test=y[test]##Test responses
+##5-fold cross validation based on train data; we may set our own lambda=grid
+list.fit=list() ####Creating empty list
+for(i in 0:10){
+  mod.alpha=paste("alpha", i/10)
+  list.fit[[mod.alpha]]=cv.glmnet(x[train,],y[train],alpha=i/10, nfolds=5)
+}
+#TEST MSE calculation 
+All_mod=data.frame()
+for(i in 0:10){
+  mod.alpha=paste("alpha", i/10)
+ pred.net= predict(list.fit[[mod.alpha]],
+                   s=list.fit[[mod.alpha]]$lambda.min, newx=x[test,]) 
+mse.net=mean((y.test-pred.net)^2)
+mse.list=data.frame(alpha=i/10, mse=mse.net, model.name=mod.alpha)
+All_mod=rbind(All_mod,mse.list)
+}
+All_mod
+min.mse=min(All_mod[,"mse"])
+min.mse
+All_mod[All_mod$mse==min.mse,]
+#Final Model in elastic net based on the full data 
+Final_model=glmnet(x,y,alpha=0.2, lambda=list.fit[["alpha 0.2"]]$lambda.min)
+coef(Final_model)
+###LSE Estimator 
+#lasso.ls=predict(lasso.full,s=0 ,newx=x, exact=T) 
+#mean((lasso.ls-y.test)^2)
+#predict(lasso.full,s=0 ,type="coefficients")[1:12,]
