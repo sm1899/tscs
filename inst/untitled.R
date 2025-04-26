@@ -54,7 +54,7 @@ pcr.fit$coefficients
 #  lines(coef.mat[i,], col = i)
 #}
 #abline(v = min.pcr, lty = 3)
-###########  Prediction #######
+#Prediction
 pcr.pred=predict(pcr.fit,x[test ,],ncomp =5)
 mean((pcr.pred-y.test)^2)
 pcr.fit = pcr(y~ x, scale = TRUE, ncomp = 5)
