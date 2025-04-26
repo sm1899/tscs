@@ -69,9 +69,178 @@ summary(pcr.fit)
 
 
 
+#sheet 5
+setwd("/Users/Local Drive/Teaching/2022/SMRA/R-CODES")
+library(ISLR2)
+View(Wage)
+fit <- lm(wage~ poly(age, 4, raw=F ), data = Wage) 
+summary(fit)
+fit2<- lm(wage~age + I(age^2) + I(age^3) + I(age^4), data = Wage)
+summary(fit2)
+#Prediction
+agelims <- range(Wage$age)
+agelims
+age.grid <- seq(from = agelims[1], to = agelims[2], by=1)
+age.grid
+preds <- predict(fit2, newdata = list(age = age.grid),
+                   se = TRUE)
+preds
+se.bands <- cbind(preds$fit + 2 * preds$se.fit,
+                    preds$fit - 2 * preds$se.fit)
+se.bands
+#
+par(mfrow = c(1, 1))
+plot(Wage$age, Wage$wage, xlim = agelims, cex = .5, col = "darkgrey") 
+title("Degree-4 Polynomial", outer = T)
+lines(age.grid, preds$fit, lwd = 2, col = "blue")
+matlines(age.grid, se.bands, lwd = 1, col = "red", lty = 3)
+#Deciding the degree of the polynomial
+fit.1 <- lm(wage ~ age, data = Wage)
+summary(fit.1)
+fit.2 <- lm(wage ~ poly(age, 2), data=Wage)
+summary(fit.2)
+fit.3 <- lm(wage ~ poly(age, 3), data=Wage)
+summary(fit.3)
+fit.4 <- lm(wage ~ poly(age, 4), data=Wage) 
+summary(fit.4)
+fit.5 <- lm(wage ~ poly(age, 5), data=Wage)
+summary(fit.5)                                                      
+#anova(fit.1, fit.2, fit.3,fit.4, fit.5)
 
+#Logistic regression fit with Polynomial
+fit.log <- glm(I(wage > 250) ~ poly(age, 4), data = Wage, family = binomial)
+summary(fit.log)
+#
+fit.log0 <- glm(I(wage > 250) ~age, data = Wage, family = binomial)
+fit.log1 <- glm(I(wage > 250) ~ poly(age, 1), data = Wage, family = binomial)
+fit.log2 <- glm(I(wage > 250) ~ poly(age, 2), data = Wage, family = binomial)
+fit.log3 <- glm(I(wage > 250) ~ poly(age, 3), data = Wage, family = binomial)
+fit.log4 <- glm(I(wage > 250) ~ poly(age, 4), data = Wage, family = binomial)
+#Step Function
+summary(Wage$age)
+table(cut(Wage$age, breaks=c(17,33.75,42,51,80)))
+table(cut(Wage$age, 4))
+fit.step <- lm(wage~ cut(age, 4),data = Wage)
+summary(fit.step)
+fit.st <- lm(wage~ cut(Wage$age, breaks=c(17,33.75,42,51,80)),data = Wage)
+fit.st
+#Prediction
+agelims <- range(Wage$age)
+agelims
+age.grid <- seq(from = agelims[1], to = agelims[2], by=1)
+age.grid##create a new set of data
+preds <- predict(fit.step, newdata = list(age = age.grid),
+                 se = TRUE)
+preds
+se.ban <- cbind(preds$fit + 2 * preds$se.fit,
+                  preds$fit - 2 * preds$se.fit)
+se.ban
+#
+par(mar=c(1,1,1,1))
+par(mfrow = c(1, 2))
+plot(Wage$age, Wage$wage, xlim = agelims, cex = .5, col = "darkgrey") 
+title("Step function", outer = T)
+lines(age.grid, preds$fit, lwd = 2, col = "blue")
+matlines(age.grid, se.ban, lwd = 1, col = "blue", lty = 3)
+#Logistic regression fit with step function
+fit.log.step <- glm(I(wage > 250) ~ cut(age, 4), data = Wage,
+                    family = binomial)
+summary(fit.log.step)
 
+#Splines 
 
+install.packages("splines")
+library(splines)
+#Fitting a cubic splines with three knots
+fit.sp <- lm(wage~ bs(age,knots = c(33.75, 42, 51)),degree=3, data = Wage) 
+summary(fit.sp)
+#create a new set of data 
+agelims <- range(Wage$age)
+agelims
+age.grid <- seq(from = agelims[1], to = agelims[2], by=2)
+age.grid
+#
+pred <- predict(fit.sp, newdata = list(age = age.grid), se = T) 
+pred
+plot(Wage$age, Wage$wage, col = "gray")
+lines(age.grid, pred$fit, lwd = 2)
+lines(age.grid, pred$fit + 2 * pred$se, lty = "dashed")
+ lines(age.grid, pred$fit - 2 * pred$se, lty = "dashed")
+ # Fitting a linear spline
+ fit.ls <- lm(wage~ bs(age,knots = c(33.75, 42, 51), degree=1), data = Wage) 
+ summary(fit.ls)
+ #Fitting a quadratic spline
+ fit.ls <- lm(wage~ bs(age,knots = c(33.75, 42, 51), degree=2), data = Wage) 
+ summary(fit.ls) 
+ 
+#Natural cubic spline
+#Fitting natural cubic splines with knots at quantiles
+ attr(bs(Wage$age, df = 6), "knots")
+ #
+ fit2 <- lm(wage ~ ns(age, knots = c(33.75, 42, 51)), data = Wage)
+ summary(fit2)
+ pred2 <- predict(fit2, newdata = list(age = age.grid),
+                    se = T)
+ lines(age.grid, pred2$fit, col = "red", lwd = 2)
+
+ #Fitting Smoothing splines
+
+ library(splines)
+ agelims <- range(Wage$age)
+ plot(Wage$age, Wage$wage, xlim = agelims, cex = .5, col = "darkgrey") 
+ title("Smoothing Spline")
+  fit <- smooth.spline(Wage$age, Wage$wage, df = 16)
+  attr(fit)
+  fit2 <- smooth.spline(Wage$age, Wage$wage, cv = TRUE)
+ fit2$df
+ #
+ lines(fit, col = "red", lwd = 2)
+ lines(fit2, col = "blue", lwd = 2)
+ legend("topright", legend = c("16 DF", "6.8 DF"),
+          col = c("red", "blue"), lty = 1, lwd = 2, cex = .8)
+ pred <- predict(fit2, newdata = list(age = age.grid), se = T) 
+ pred 
+#GAM 
+#
+ library(gam)
+ gam.mod <- gam(wage ~ s(year, 4) + s(age, 5) + education,data = Wage)
+ summary(gam.mod)
+ par(mfrow = c(1, 3))
+ plot.Gam(gam.mod, se = TRUE, col = "blue")
+ #
+ gam.m1 <- gam(wage ~ s(age, 5) + education, data = Wage) 
+ gam.m2 <- gam(wage ~ year + s(age, 5) + education,data = Wage)
+ anova(gam.m1, gam.m2, test = "F")
+ anova(gam.m2, gam.mod, test = "F")
+ #
+ preds <- predict(gam.m2, newdata = Wage)
+ preds
+ #GAM with natural spline
+ 
+ library("ISLR2") 
+ library("splines")
+ library("gam")
+ M2<-gam(wage~ ns(year,df=5)+ns(age,df=5)+education,data=Wage)
+ par(mfrow = c(2, 2))
+ plot(M2,se=TRUE, col = "blue")
+ summary(M2)
+ coef(M2)
+ 
+ #GAM with smoothing spline
+ library("gam")
+ M3<-gam(wage~ s(year,df=4)+s(age,df=4)+education,data=Wage)
+ plot(M3,se=TRUE, col = "red")
+ summary(M3)
+ coef(M3)
+ #GAM for categorical response
+ M4<-gam(I(wage > 250)~ s(year,df=4)+s(age,df=4)+education,data=Wage,
+         family = binomial)
+ summary(M4)
+ plot(M4,se=TRUE, col = "red")
+ #Comparing M2 and M3
+ anova(M2, M3, test = "F")
+ 
+ 
 
 
 
@@ -107,7 +276,7 @@ which.max(reg.summary$adjr2)
 coef(best.model,7)
 points (7, reg.summary$adjr2[7] , col = "red", cex = 2,
         pch = 20)
-#######################################
+#
  par(mfrow = c(2, 2))
 plot(reg.summary$rss , xlab = "Number of Variables",
        ylab = "RSS", type = "l")
@@ -142,7 +311,7 @@ plot(fwd.summary$adjr2 , xlab = "Number of Variables",
 which.max(fwd.summary$adjr2)
 points (7, fwd.summary$adjr2 [7] , col = "red", cex = 2,
         pch = 20)
-######
+#
 plot(reg.summary$cp, xlab = "Number of Variables",
          ylab = "Cp", type = "l")
  which.min(reg.summary$cp)
@@ -186,13 +355,13 @@ plot(seq.summary$adjr2 , xlab = "Number of Variables",
 which.max(seq.summary$adjr2)
 points (7, seq.summary$adjr2 [7] , col = "red", cex = 2,
         pch = 20)
-##########
+#
 plot(reg.summary$cp, xlab = "Number of Variables",
      ylab = "Cp", type = "l")
 which.min(reg.summary$cp)
 points (6, reg.summary$cp[6] , col = "red", cex = 2,
         pch = 20)
-#########
+#
 plot(reg.summary$bic , xlab = "Number of Variables",
      ylab = "BIC", type = "l")
 which.min(reg.summary$bic)
