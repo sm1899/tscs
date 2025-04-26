@@ -1,3 +1,82 @@
+#pca
+View(USArrests)
+apply(USArrests, 2, mean)#Row means
+apply(USArrests, 2, var)# Row variances
+#PCA calculation
+PCA= prcomp(USArrests, scale = TRUE)##PCA calculation
+PCA$rotation ##Getting the principal components
+biplot(PCA)
+# getting SD/variance of each principal component
+PCA$sdev
+pr.var=PCA$sdev^2
+pr.var#getting Variation of each principal component
+screeplot(PCA, npcs = 24, type = "lines")
+#Proportion of variation.
+pve =pr.var / sum(pr.var)
+pve
+#
+par(mar=c(1,1,1,1))
+par(mfrow = c(1, 2))
+plot(pve, xlab = "Principal Component",
+       ylab = "Proportion of Variance Explained", ylim = c(0, 1), type = "b") ##Plotting of PVE
+plot(cumsum(pve), xlab = "Principal Component",
+       ylab = "Cumulative Proportion of Variance Explained", ylim = c(0, 1), type = "b") ##Plotting of cummulative PVE
+
+#PCA Regression Analysis
+library(ISLR2)
+library(pls)
+set.seed(1)
+str(Hitters)
+View(Hitters)
+Hitters=na.omit(Hitters)
+x = model.matrix(Salary ~ ., Hitters)[, -1] 
+y = Hitters$Salary
+train = sample(1:nrow(x), nrow(x) *(2/3)) 
+test = (-train)
+y.test = y[test]
+pcr.fit= pcr(Salary ~ ., data = Hitters, subset = train,
+                 scale = TRUE, validation = "CV")
+validationplot(pcr.fit, val.type = "MSEP")
+#Min no. of PCA components
+min.pcr = which.min( MSEP( pcr.fit )$val[1,1, ] ) - 1
+min.pcr##Subtracting -1 because 1st component is coming as an intercept model
+coef(pcr.fit, ncomp = min.pcr)
+#Plotting of coefficients
+pcr.fit$coefficients
+#coef.mat = matrix(NA, 19, 19)
+#for(i in 1:19){
+#  coef.mat[,i] = pcr.fit$coefficients[,,i]
+#}
+#plot(coef.mat[1,], type = 'l', ylab = 'Coefficients', 
+#     xlab = 'Number of components',
+#     ylim = c(min(coef.mat), max(coef.mat)))
+#for(i in 2:19){
+#  lines(coef.mat[i,], col = i)
+#}
+#abline(v = min.pcr, lty = 3)
+###########  Prediction #######
+pcr.pred=predict(pcr.fit,x[test ,],ncomp =5)
+mean((pcr.pred-y.test)^2)
+pcr.fit = pcr(y~ x, scale = TRUE, ncomp = 5)
+summary(pcr.fit)
+# Scree Plot 
+#PVE <- rep(NA,19)
+#for(i in 1:19){ PVE[i]<- sum(pcr.fit$Xvar[1:i])/pcr.fit$Xtotvar }
+#barplot( PVE, names.arg = 1:19, main = "scree plot", 
+#         xlab = "number of PCs", 
+#         ylab = "proportion of variance explained" )
+
+
+
+
+
+
+
+
+
+
+
+
 #sheet2
 setwd("/Users/Local Drive/Teaching/2022/SMRA/R-CODES")
 library(ISLR2)
